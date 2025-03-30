@@ -11,36 +11,40 @@ Quark_ShareLink_Pattern = r"(https:\/\/pan\.quark\.cn\/s\/[a-f0-9]{12})(?:.*?(?:
 @register("astrbot_plugin_quarksave", "lm379", "调用quark-auto-save转存资源到自己的夸克网盘", "1.0.0")
 class QuarkSave(Star):
     def __init__(self, context: Context, config: dict):
-        super().__init__(context)
+        super().__init__(context)   
+        self.config = config
         self.cookie = {
             "QUARK_AUTO_SAVE_SESSION": config.get("quark_auto_save_cookie")
         }
         self.save_path = config.get("quark_save_path")
         self.base_url = config.get("quark_auto_save_url")
-        self.username = config.get("quark_auto_save_username")
-        self.password = config.get("quark_auto_save_password")
-        self.run_now = config.get("quark_auto_save_run_now") or False
         # 如果保存路径不是以/开头，则添加/
         if self.save_path and self.save_path[0] != "/":
             self.save_path = "/" + self.save_path
+        if self.save_path and self.save_path[-1] != "/":
+            self.save_path += "/"
         # 如果URL不是以/结尾，则添加/
         if self.base_url and self.base_url[-1] != "/":
             self.base_url += "/"
         try:
-            self.quark_save = QuarkSaveApi(self)  # 传递 QuarkSave 实例
+            self.quark_save = QuarkSaveApi(config)  # 传递 QuarkSave 实例
         except Exception as e:
-            logger.error(f"Failed to initialize QuarkSaveApi: {e}")
+            logger.error(f"初始化QuarkSaveApi失败: {e}")
             raise
 
     async def initialize(self):
-        """Asynchronous initialization logic."""
-        if self.cookie == "your cookie":
+        # 未填写cookie
+        quark_session = self.cookie.get("QUARK_AUTO_SAVE_SESSION")
+        if not quark_session or quark_session == "your cookie" or quark_session.strip() == "":
+            logger.error("请填写cookie")
             return
+            # raise ValueError("QUARK_AUTO_SAVE_SESSION cookie 未设置或无效，请检查配置")
         if not await self.quark_save.check_url():
             logger.error("quark-auto-save地址无效，请检查配置")
-            raise ValueError("quark-auto-save地址无效，请检查配置")
+            return
+        await self.quark_save.initialize()
+            # raise ValueError("quark-auto-save地址无效，请检查配置")
     
-    # 注册指令的装饰器。指令名为 helloworld。注册成功后，发送 `/helloworld` 就会触发这个指令，并回复 `你好, {user_name}!`
     @filter.command_group("quark")
     async def quark(self, event: AstrMessageEvent):
         yield event.plain_result(f"Hello, 这是一个调用夸克自动转存项目的插件\n你可以向我发送一条夸克网盘的分享链接\n我在识别后将调用quark-auto-save这个项目来添加转存任务\n请确保你已经提前部署好了该项目并配置好了cookie或账号密码\n如果准备工作已经就绪，那么，开始吧~") # 发送一条纯文本消息
@@ -70,19 +74,17 @@ class QuarkSave(Star):
             share_pwd = match.group(2) or None
 
             # 调用quark-auto-save
-            if self.quark_save.check_cookie() == False:
+            if await self.quark_save.check_cookie() == False:
                 yield event.plain_result("未填写Cooike或Cookie失效")
             elif self.quark_save.check_link_exist(share_link):
                 yield event.plain_result("该链接已经存在")
             else:
                 share_detail = self.quark_save.get_share_detail(share_link, share_pwd)
-                if share_detail["status"] == "error":
+                if "status" in share_detail and share_detail["status"] == "error":
                     yield event.plain_result(share_detail["message"])
                 else:
                     # 去除标题中的.和空格
                     title = share_detail["share"]["title"].replace(".", "").replace(" ", "")
                     save_path = self.save_path + title
-                    res = self.quark_save.add_share_task(share_link, share_pwd, save_path, title)
+                    res = await self.quark_save.add_share_task(share_link, share_pwd, save_path, title)
                     yield event.plain_result(res["message"])
-
-
