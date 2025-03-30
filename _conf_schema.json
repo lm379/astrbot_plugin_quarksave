@@ -1,0 +1,37 @@
+{
+    "quark_auto_save_cookie": {
+        "description": "Cookie",
+        "type": "string",
+        "default": "your cookie",
+        "hint": "请登录后台，按F12打开开发者工具，复制cookie"
+    },
+    "quark_auto_save_url": {
+        "description": "Quark-Auto-Save的URL地址",
+        "hint": "‼️若Quark-Auto-Save和AstrBot部署在同一台机器上，且均为docker部署，请修改为Quark-Auto-Save的容器IP地址‼️",
+        "default": "http://172.17.0.1:5005/",
+        "type": "string"
+    },
+    "quark_auto_save_username":{
+        "description": "Quark-Auto-Save的登录用户名",
+        "default": "admin",
+        "hint": "若Cookie失效会尝试使用用户名和密码更新Cookie",
+        "type": "string"
+    },
+    "quark_auto_save_password":{
+        "description": "Quark-Auto-Save的登录密码",
+        "default": "admin123",
+        "hint": "若Cookie失效会尝试使用用户名和密码更新Cookie",
+        "type": "string"
+    },
+    "quark_save_path": {
+        "description": "默认保存路径",
+        "default": "/astrbot/quark_save",
+        "hint": "请确保该路径存在，若不存在会自动创建",
+        "type": "string"
+    },
+    "run_now": {
+        "description": "任务添加后是否立即运行添加的任务",
+        "default": false,
+        "type": "bool"
+    }
+}
