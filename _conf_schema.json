@@ -3,7 +3,8 @@
         "description": "Cookie",
         "type": "string",
         "default": "your cookie",
-        "hint": "请登录后台，按F12打开开发者工具，复制cookie"
+        "hint": "请登录Quark—auto-save后台，按F12打开开发者工具，复制cookie，将 QUARK_AUTO_SAVE_SESSION= 后的内容复制到此处",
+        "obvious_hint": true
     },
     "quark_auto_save_url": {
         "description": "Quark-Auto-Save的URL地址",

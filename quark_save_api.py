@@ -3,8 +3,6 @@ import json
 import re
 import aiohttp
 import asyncio
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
-from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 
 class QuarkSaveApi:
@@ -34,12 +32,12 @@ class QuarkSaveApi:
         if await self.check_url():
             if await self.check_cookie():
                 self.quark_config = await self.fetch_config()
-                logger.info("获取配置成功")
             else:
-                logger.error("cookie无效")
+                logger.info("当前Cookie无效，将尝试自动获取Cookie")
         else:
             logger.error("地址无效")
 
+    # 获取配置
     async def fetch_config(self):
         base_url = self.base_url
         cookies = self.cookie
@@ -87,9 +85,6 @@ class QuarkSaveApi:
 
     # 获取Cookie
     # async def get_cookies(self):
-    #     base_url = self.base_url
-    #     username = self.username
-    #     password = self.password
     #     url = base_url + "login"
     #     async with aiohttp.ClientSession() as session:
     #         async with session.post(url, json={"username": username, "password": password}) as response:
@@ -100,23 +95,26 @@ class QuarkSaveApi:
     #                 return None
 
     # 获取分享链接详情
-    def get_share_detail(self, quark_share_link, pwd):
+    async def get_share_detail(self, quark_share_link, pwd):
         base_url = self.base_url
-        cookies = self.cookie
         url = base_url + "get_share_detail"
         if pwd:
             share_link = quark_share_link + "?pwd=" + pwd
         else:
             share_link = quark_share_link
         querystring = {"shareurl": share_link}
-        response = requests.get(url, params=querystring, cookies=cookies)
-        response_json = response.json()
-        if 'error' in response_json:
-            return {
-                "status": "error",
-                "message": response_json["error"]
-            }
-        return response_json
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url,querystring=querystring,cookies=self.cookie) as response:
+                response_json = response.json()
+                if 'error' in response_json:
+                    return {
+                        "status": "error",
+                        "message": response_json["error"]
+                    }
+                return response_json
+        # except Exception as e:
+        # response = requests.get(url, params=querystring, cookies=cookies)
+        
 
     # 检查链接是否已经存在
     def check_link_exist(self, share_link):
@@ -126,6 +124,14 @@ class QuarkSaveApi:
             if re.search(pattern, task["shareurl"]).group(1) == share_link:
                 return True
         return False
+
+    # 更新配置
+    async def update(self):
+        url = self.base_url + "update"
+        cookie = self.cookie
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url,cookies=cookie,json=self.quark_config) as response:
+                return response.json()
 
     # 添加分享任务
     async def add_share_task(self, share_link, pwd, save_path, title):
@@ -156,21 +162,31 @@ class QuarkSaveApi:
             "runweek": [1, 2, 3, 4, 5, 6, 7]
         }
         self.quark_config["tasklist"].append(task)
-        base_url = self.base_url
-        cookies = self.cookie
-        url = base_url + "update"
-        try:
-            response = requests.post(url, json=self.quark_config, cookies=cookies)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {
-                    "status": "error",
-                    "code": response.status_code,
-                    "message": "添加任务失败"
-                }
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": str(e)
-            }
+        resp = await self.update()
+        await self.quark_config = self.fetch_config() # 刷新更新后的配置
+        return resp
+
+    # 获取任务列表
+    async def get_task_list(self):
+        task_list = self.quark_config["tasklist"]
+        return task_list
+
+    # 运行任务
+    async def run_task(self,index):
+        url = self.base_url + "run_script_now"
+        querystring = {"task_index": index}
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url,querystring=querystring,cookies=self.cookie) as response:
+                response_json = response.json()
+                return response_json
+    
+    # 删除指定任务        
+    async def del_task(self,index):
+        if 0 <= index < len(self.quark_config["tasklist"]):
+            del self.quark_config[index]
+            await self.update()
+            await self.quark_config = self.fetch_config() # 刷新更新后的配置
+            return {"删除成功"}
+        else:
+            return {"索引越界，不支持处理"}
+        

@@ -46,20 +46,35 @@ class QuarkSave(Star):
             # raise ValueError("quark-auto-save地址无效，请检查配置")
     
     @filter.command_group("quark")
-    async def quark(self, event: AstrMessageEvent):
-        yield event.plain_result(f"Hello, 这是一个调用夸克自动转存项目的插件\n你可以向我发送一条夸克网盘的分享链接\n我在识别后将调用quark-auto-save这个项目来添加转存任务\n请确保你已经提前部署好了该项目并配置好了cookie或账号密码\n如果准备工作已经就绪，那么，开始吧~") # 发送一条纯文本消息
-    
+    # async def quark(self, event: AstrMessageEvent):
+    #     yield event.plain_result(f"Hello, 这是一个调用夸克自动转存项目的插件\n你可以向我发送一条夸克网盘的分享链接\n我在识别后将调用quark-auto-save这个项目来添加转存任务\n请确保你已经提前部署好了该项目并配置好了cookie或账号密码\n如果准备工作已经就绪，那么，开始吧~") # 发送一条纯文本消息
+    def quark(self):
+        pass
+
     @quark.command("help", alias=['帮助', 'helpme'])
     async def help(self, event: AstrMessageEvent):
+        '''帮助信息'''
         yield event.plain_result(f"Hello, 这是一个调用夸克自动转存项目的插件\n你可以向我发送一条夸克网盘的分享链接\n我在识别后将调用quark-auto-save这个项目来添加转存任务\n请确保你已经提前部署好了该项目并配置好了cookie或账号密码\n如果准备工作已经就绪，那么，开始吧~")
 
-    @quark.command("run")
-    def run_task(self, event: AstrMessageEvent, id: int):
-        yield event.plain_result(f"开始运行任务 {id}")
+    @quark.command("run", alias=['执行', '运行'])
+    async def run_task(self, event: AstrMessageEvent, id: int):
+        '''执行单个任务'''
+        resp = await self.quark_save.run_task(id)
+        yield event.plain_result(resp)
+    
+    @quark.command("runall", alias=['执行所有', '运行所有'])
+    async def run_all_task(self, event: AstrMessageEvent):
+        '''执行所有任务'''
+        resp = await self.quark_save.run_task(None)
+        yield event.plain_result(resp)
 
-    @quark.command("list")
-    def get_list(self, event: AstrMessageEvent):
-        yield event.plain_result(f"获取任务列表")
+    @quark.command("list", alias=['列表', '任务列表'])
+    async def get_list(self, event: AstrMessageEvent):
+        '''获取任务列表'''
+        tasklist = await self.quark_save.get_task_list()
+        # for task in res:
+        #     tasklist = f"ID{task["id"]}"
+        yield event.plain_result(tasklist)
     
     # 监听所有消息，且只允许单聊
     @filter.permission_type(PermissionType.ADMIN)
@@ -88,3 +103,7 @@ class QuarkSave(Star):
                     save_path = self.save_path + title
                     res = await self.quark_save.add_share_task(share_link, share_pwd, save_path, title)
                     yield event.plain_result(res["message"])
+                    if self.quark_save.run_now:
+                        index = len(self.quark_save.quark_config["tasklist"])
+                        res = await self.quark_save.run_task(index)
+                        yield event.plain_result(res)    
