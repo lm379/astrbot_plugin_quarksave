@@ -92,7 +92,69 @@ class QuarkSave(Star):
         '''删除任务'''
         resp = await self.quark_save.del_task(id)
         yield event.plain_result(f"任务{id} {resp['message']}")
+
+    @quark.command("rename", alias=['重命名', '修改任务'])
+    async def rename(self, event: AstrMessageEvent, id: int, name: str):
+        '''重命名任务'''
+        resp = await self.quark_save.rename_task(id, name, dir=None, link=None, subdir=None)
+        yield event.plain_result(f"任务{id} {resp['message']}")
     
+    @quark.command("update_link", alias=['修改链接', '更新链接'])
+    async def update_link(self, event: AstrMessageEvent, id: int, link: str):
+        '''更新任务链接'''
+        match = re.search(Quark_ShareLink_Pattern, link)
+        if not match:
+            yield event.plain_result("请提供有效的分享链接")
+            return
+        # 提取分享链接和提取码
+        share_link = match.group(1)
+        share_pwd = match.group(2) or None
+        # 检查链接是否存在
+        if self.quark_save.check_link_exist(share_link):
+            yield event.plain_result("该链接已经存在")
+            self.quark_save.quark_config = await self.quark_save.fetch_config() # 刷新配置
+        else:
+            if share_pwd is not None:
+                share_link = share_link + "?pwd=" + share_pwd
+            resp = await self.quark_save.rename_task(id, link=share_link, dir=None, subdir=None, name=None)
+            yield event.plain_result(f"任务{id} {resp['message']}")
+
+    @quark.command("update_dir", alias=['修改目录', '更新目录'])
+    async def update_dir(self, event: AstrMessageEvent, id: int, dir: str):
+        '''更新任务目录'''
+        if dir is None:
+            yield event.plain_result("请输入目录")
+            return
+        # 检查目录是否以/开头
+        if dir[0] != "/":
+            dir = "/" + dir
+        resp = await self.quark_save.rename_task(id, dir=dir, subdir=None, link=None, name=None)
+        yield event.plain_result(f"任务{id} {resp['message']}")
+    
+    @quark.command("update_subdir", alias=['修改子目录', '更新子目录'])
+    async def update_subdir(self, event: AstrMessageEvent, id: int, subdir: str):
+        '''更新任务子目录正则表达式'''
+        if subdir is None:
+            yield event.plain_result("请输入子目录正则")
+            return
+        resp = await self.quark_save.rename_task(id, subdir=subdir, dir=None, link=None, name=None)
+        yield event.plain_result(f"任务{id} {resp['message']}")
+
+    @quark.command("detail", alias=['详情', '任务详情'])
+    async def get_detail(self, event: AstrMessageEvent, id: int):
+        '''获取任务详情'''
+        resp = await self.quark_save.get_task_detail(id)
+        if resp["code"] == 1:
+            yield event.plain_result(f"{resp['message']}")
+        else:
+            task = resp["data"]
+            task_detail = f"ID: {id}  任务名: {task['taskname']}\n链接: {task['shareurl']}\n保存目录: {task['savepath']}\n匹配表达式: {task['pattern']}\n替换表达式: {task['replace']}"
+            if task.get("shareurl_ban"):
+                task_detail += f"\n当前状态: {task['shareurl_ban']}"
+            if task.get("update_subdir"):
+                task_detail += f"\n子目录正则表达式: {task['update_subdir']}"
+            yield event.plain_result(f"{task_detail}")
+
     # 监听所有消息，且只允许单聊
     @filter.permission_type(PermissionType.ADMIN)
     @filter.event_message_type(filter.EventMessageType.PRIVATE_MESSAGE)

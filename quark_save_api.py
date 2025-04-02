@@ -1,4 +1,5 @@
 import re
+import os
 import aiohttp
 import asyncio
 from astrbot.api import logger
@@ -8,12 +9,8 @@ class QuarkSaveApi:
         self.cookie = {
             "QUARK_AUTO_SAVE_SESSION": config.get("quark_auto_save_cookie")
         }
-        # self.quark_config = {"cookie": [],"push_config":{},"tasklist": [],"crontab": "","emby": {},"magic_regex": {},"plugins": {},"task_plugins_config": {}}
         self.save_path = config.get("quark_save_path")
         self.base_url = config.get("quark_auto_save_url")
-        # self.username = config.get("quark_auto_save_username") or "admin"
-        # self.password = config.get("quark_auto_save_password") or "admin123"
-        # self.run_now = config.get("quark_auto_save_run_now") or False
         self.url_status = False
         self.cookie_status = False
         self.error_message = {
@@ -84,17 +81,6 @@ class QuarkSaveApi:
                 if response.url == base_url + "login":
                     return False
                 return True
-
-    # 获取Cookie
-    # async def get_cookies(self):
-    #     url = base_url + "login"
-    #     async with aiohttp.ClientSession() as session:
-    #         async with session.post(url, json={"username": username, "password": password}) as response:
-    #             if response.status == 200:
-    #                 cookies = response.cookies.get_dict()
-    #                 return cookies
-    #             else:
-    #                 return None
 
     # 获取分享链接详情
     async def get_share_detail(self, quark_share_link, pwd):
@@ -216,3 +202,46 @@ class QuarkSaveApi:
         else:
             return {"code": 1, "message":"索引越界，不支持处理"}
         
+    # 修改指定任务
+    async def rename_task(self, index, name, dir, link, subdir):
+        if self.url_status == False:
+            return {"code": 1, "message": "连接quark-auto-save失败"}
+        if self.cookie_status == False:
+            return {"code": 1, "message": "Cookie无效，请更新Cookie"}
+        if index < 0 or index >= len(self.quark_config["tasklist"]):
+            return {"code": 1, "message": "索引越界，不支持处理"}
+        # 复制tasklist[index]，避免直接修改原数据
+        task = self.quark_config["tasklist"][index].copy()
+        # 修改任务名称
+        if name:
+            task["taskname"] = name
+            if task["taskname"]:
+                base_path = os.path.dirname(task["savepath"])
+                # 如果任务名称不为空，则使用任务名称作为子目录
+                task["savepath"] = os.path.join(base_path, name)
+        if dir:
+            # 将目录修改为 /dir/taskname
+            task["savepath"] = os.path.join(dir, os.path.basename(task["taskname"]))
+        if link:
+            task["shareurl"] = link
+        if subdir:
+            task["update_subdir"] = subdir # 子目录正则表达式
+        if dir is None and link is None and subdir is None and name is None:
+            return {"code": 1, "message": "没有需要修改的内容"}
+        self.quark_config["tasklist"][index] = task
+        if await self.update():
+            self.quark_config = await self.fetch_config() # 刷新更新后的配置
+            return {"code": 0, "message": "修改成功"}
+        else:
+            return {"code": 1, "message": "修改失败"}
+        
+    # 获取任务详情
+    async def get_task_detail(self, index):
+        if self.url_status == False:
+            return {"code": 1, "message": "连接quark-auto-save失败"}
+        if self.cookie_status == False:
+            return {"code": 1, "message": "Cookie无效，请更新Cookie"}
+        if index < 0 or index >= len(self.quark_config["tasklist"]):
+            return {"code": 1, "message": "索引越界，不支持处理"}
+        task = self.quark_config["tasklist"][index]
+        return {"code": 0, "message": "success", "data": task}
