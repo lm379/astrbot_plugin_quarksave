@@ -1,10 +1,27 @@
 # Astrbot_plugin_quarksave
 
-AstrBot 插件 -- 调用 [quark_auto_save](https://github.com/Cp0204/quark-auto-save) 实现自动转存资源到夸克网盘
+[AstrBot](https://astrbot.app/) 插件 -- 调用 [quark_auto_save](https://github.com/Cp0204/quark-auto-save) 实现自动转存资源到夸克网盘
+
+项目地址：
+[Github](https://github.com/lm379/astrbot_plugin_quarksave) 
+[Gitee](https://gitee.com/lm379/astrbot_plugin_quarksave)
 
 ## 使用方式
 
-安装插件，填写 cookie 和 quark_auto_save 的URL地址，然后发送一条带有夸克链接的消息给机器人即可，理论支持全平台，发送链接给机器人仅支持私聊
+安装插件，目前已经上架astrbot插件市场，填写 API Token 和 quark_auto_save 的URL地址，然后发送一条带有夸克链接的消息给机器人即可，理论支持全平台
+
+觉得好用的话，点个Star吧~~
+
+若无法访问github，可前往gitee下载源码后手动安装
+
+```bash
+cd AstrBot/data/plugins
+git clone https://gitee.com/lm379/astrbot_plugin_quarksave.git
+```
+
+> [!CAUTION]   
+> ⛔️⛔️⛔️ 由于 quark-auto-save 在新版本中加入了API Token授权，现在已经移除了原有的cookie授权模式，改为了项目的 API Token授权，请更新项目至 **0.5.0** 版本以上    
+> 另外，由于QQ机器人官方接口限制外链发送，若使用QQ机器人官方接口，部分指令发送后会无响应！！！
 
 ## 指令介绍
 
@@ -67,11 +84,13 @@ AstrBot 插件 -- 调用 [quark_auto_save](https://github.com/Cp0204/quark-auto-
 ```
 /quark help
 ```
-### cookie获取方式
+### API Token 获取方式
 
-按F12打开控制台，切换到网络选项卡，刷新网页后找到任意请求，找到cookie，复制 **QUARK_AUTO_SAVE_SESSION=** 后面的内容即可，其余的不要
+进入quark-auto-save后台，在系统配置下找到API Token，将Token复制过来即可
 
-![alt text](images/cookie.png)
+<!-- 按F12打开控制台，切换到网络选项卡，刷新网页后找到任意请求，找到cookie，复制 **QUARK_AUTO_SAVE_SESSION=** 后面的内容即可，其余的不要 -->
+
+![alt text](images/token.png)
 
 ## 项目截图
 
@@ -86,3 +105,14 @@ AstrBot 插件 -- 调用 [quark_auto_save](https://github.com/Cp0204/quark-auto-
 
 4. 运行任务
 ![alt text](images/run.png)
+
+## 更新记录
+
+### v1.0.2
+
+适配API Token授权模式 (需上游项目 **v0.5.0** 版本及以上)  
+重构整体代码，修复部分bug
+
+## Todo List
+
+适配天翼云盘和百度网盘的转存项目

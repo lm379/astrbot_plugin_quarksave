@@ -2,9 +2,8 @@
     "quark_auto_save_cookie": {
         "description": "Cookie",
         "type": "string",
-        "default": "your cookie",
-        "hint": "请登录Quark—auto-save后台，按F12打开开发者工具，复制cookie，将 QUARK_AUTO_SAVE_SESSION= 后的内容复制到此处",
-        "obvious_hint": true
+        "hint": "已废弃，会在后续版本中删除，请使用API密钥",
+        "obvious_hint": false
     },
     "quark_auto_save_url": {
         "description": "Quark-Auto-Save的URL地址",
@@ -17,5 +16,12 @@
         "default": "/astrbot/quark_save",
         "hint": "请确保该路径存在，若不存在会自动创建",
         "type": "string"
+    },
+    "quark_auto_save_token": {
+        "description": "API密钥",
+        "type": "string",
+        "default": "",
+        "hint": "请在Quark-Auto-Save的后台中获取",
+        "obvious_hint": true
     }
 }

@@ -12,20 +12,6 @@ Quark_ShareLink_Pattern = r"(https:\/\/pan\.quark\.cn\/s\/[a-f0-9]{12})(?:.*?(?:
 class QuarkSave(Star):
     def __init__(self, context: Context, config: dict):
         super().__init__(context)   
-        self.config = config
-        self.cookie = {
-            "QUARK_AUTO_SAVE_SESSION": config.get("quark_auto_save_cookie")
-        }
-        self.save_path = config.get("quark_save_path")
-        self.base_url = config.get("quark_auto_save_url")
-        # 如果保存路径不是以/开头，则添加/
-        if self.save_path and self.save_path[0] != "/":
-            self.save_path = "/" + self.save_path
-        if self.save_path and self.save_path[-1] != "/":
-            self.save_path += "/"
-        # 如果URL不是以/结尾，则添加/
-        if self.base_url and self.base_url[-1] != "/":
-            self.base_url += "/"
         try:
             self.quark_save = QuarkSaveApi(config)  # 传递 QuarkSave 实例
         except Exception as e:
@@ -33,24 +19,38 @@ class QuarkSave(Star):
             raise
 
     async def initialize(self):
-        # 未填写cookie
-        quark_session = self.cookie.get("QUARK_AUTO_SAVE_SESSION")
-        if not quark_session or quark_session == "your cookie" or quark_session.strip() == "":
-            logger.error("请填写cookie")
-            return
-        if not await self.quark_save.check_url():
-            logger.error("quark-auto-save地址无效，请检查配置")
-            return
         await self.quark_save.initialize()
     
     @filter.command_group("quark")
+    @filter.permission_type(PermissionType.ADMIN)
     def quark(self):
         pass
 
     @quark.command("help", alias=['帮助', 'helpme'])
     async def help(self, event: AstrMessageEvent):
         '''帮助信息'''
-        yield event.plain_result(f"Hello, 这是一个调用夸克自动转存项目的插件\n你可以向我发送一条夸克网盘的分享链接，可以包含提取码\n我在识别后将调用quark-auto-save这个项目来添加转存任务\n请确保你已经提前部署好了该项目并配置好了cookie\n如果准备工作已经就绪，那么，开始吧~\n指令格式:\n获取帮助：/quark help\n获取任务列表：/quark list\n运行指定任务：/quark run 任务id\n运行所有任务：/quark runall\n删除指定任务：/quark del 任务id")
+        yield event.plain_result(
+        """
+        Hello, 这是一个调用夸克自动转存项目的插件
+        你可以向我发送一条夸克网盘的分享链接，可以包含提取码
+        我在识别后将调用quark-auto-save这个项目来添加转存任务
+        请确保你已经提前部署好了该项目并配置好了 API token 和 URL
+        如果准备工作已经就绪，那么，开始吧~
+
+        指令格式:
+        添加任务：直接发送分享链接（若有提取码请同时发送提取码）
+        获取帮助：    /quark help
+        获取任务列表：/quark list
+        获取任务详情：/quark detail 任务id
+        运行指定任务：/quark run 任务id
+        运行所有任务：/quark runall
+        删除指定任务：/quark del 任务id
+        重命名任务：  /quark rename 任务id 新任务名
+        修改任务目录：/quark update_dir 任务id 目录
+        修改任务链接：/quark update_link 任务id 新链接
+        更新任务子目录正则表达式：/quark update_subdir taskid 子目录正则表达式
+        """
+        )
 
     @quark.command("run", alias=['执行', '运行'])
     async def run_task(self, event: AstrMessageEvent, id: int):
@@ -59,10 +59,10 @@ class QuarkSave(Star):
             yield event.plain_result("请输入任务ID")
             return
         resp = await self.quark_save.run_task(id)
-        if resp["code"] == 1:
+        if resp["success"] == False:
             yield event.plain_result(resp["message"])
         else:
-            yield event.plain_result(f'任务 {id} 运行成功\n{resp["message"]}')
+            yield event.plain_result(f'{resp["message"]}')
     
     @quark.command("runall", alias=['执行所有', '运行所有'])
     async def run_all_task(self, event: AstrMessageEvent):
@@ -75,7 +75,7 @@ class QuarkSave(Star):
     async def get_list(self, event: AstrMessageEvent):
         '''获取任务列表'''
         resp = await self.quark_save.get_task_list()
-        if resp["code"] == 1:
+        if resp["success"] == False:
             yield event.plain_result(f"{resp['message']}")
         else:
             tasklist = ""
@@ -84,7 +84,7 @@ class QuarkSave(Star):
                 if task.get("shareurl_ban"):
                     tasklist += f"  当前状态：{task['shareurl_ban']}"
                 if index < len(resp["data"]) - 1:
-                    tasklist += f"\n\n"
+                    tasklist += f"\n"
             yield event.plain_result(f"{tasklist}")
 
     @quark.command("del", alias=['删除', '删除任务', 'del'])
@@ -110,12 +110,10 @@ class QuarkSave(Star):
         share_link = match.group(1)
         share_pwd = match.group(2) or None
         # 检查链接是否存在
-        if self.quark_save.check_link_exist(share_link):
+        if self.quark_save.task_exists(share_link):
             yield event.plain_result("该链接已经存在")
-            self.quark_save.quark_config = await self.quark_save.fetch_config() # 刷新配置
         else:
-            if share_pwd is not None:
-                share_link = share_link + "?pwd=" + share_pwd
+            share_link = self.quark_save.build_share_url(share_link, share_pwd)
             resp = await self.quark_save.rename_task(id, link=share_link, dir=None, subdir=None, name=None)
             yield event.plain_result(f"任务{id} {resp['message']}")
 
@@ -144,11 +142,11 @@ class QuarkSave(Star):
     async def get_detail(self, event: AstrMessageEvent, id: int):
         '''获取任务详情'''
         resp = await self.quark_save.get_task_detail(id)
-        if resp["code"] == 1:
+        if resp["success"] == False:
             yield event.plain_result(f"{resp['message']}")
         else:
             task = resp["data"]
-            task_detail = f"ID: {id}  任务名: {task['taskname']}\n链接: {task['shareurl']}\n保存目录: {task['savepath']}\n匹配表达式: {task['pattern']}\n替换表达式: {task['replace']}"
+            task_detail = f"ID: {id}\n任务名: {task['taskname']}\n链接: {task['shareurl']}\n保存目录: {task['savepath']}\n匹配表达式: {task['pattern']}\n替换表达式: {task['replace']}"
             if task.get("shareurl_ban"):
                 task_detail += f"\n当前状态: {task['shareurl_ban']}"
             if task.get("update_subdir"):
@@ -158,6 +156,8 @@ class QuarkSave(Star):
     # 监听所有消息，且只允许单聊
     @filter.permission_type(PermissionType.ADMIN)
     @filter.event_message_type(filter.EventMessageType.PRIVATE_MESSAGE)
+    @filter.regex(r"^(?!.*\/quark).*")
+    @filter.regex(Quark_ShareLink_Pattern)
     async def quark_share_link(self, event: AstrMessageEvent):
         '''自动识别聊天记录中的分享链接'''
         message_str = event.message_str or ""
@@ -168,16 +168,14 @@ class QuarkSave(Star):
             share_pwd = match.group(2) or None
 
             # 调用quark-auto-save
-            if self.quark_save.check_link_exist(share_link):
+            if self.quark_save.task_exists(share_link):
                 yield event.plain_result("该链接已经存在")
-                self.quark_save.quark_config = await self.quark_save.fetch_config()  # 刷新配置
             else:
                 share_detail = await self.quark_save.get_share_detail(share_link, share_pwd)
-                if share_detail["code"] == 1:
+                if share_detail["success"] == False:
                     yield event.plain_result(share_detail["message"])
                 else:
                     # 去除标题中的.和空格
                     title = share_detail["data"]["share"]["title"].replace(".", "").replace(" ", "")
-                    save_path = self.save_path + title
-                    resp = await self.quark_save.add_share_task(share_link, share_pwd, save_path, title)
+                    resp = await self.quark_save.add_share_task(share_link, share_pwd, title)
                     yield event.plain_result(f'任务 {title} {resp["message"]}')
