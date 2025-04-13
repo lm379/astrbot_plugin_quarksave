@@ -25,7 +25,8 @@ class QuarkSave(Star):
     @filter.permission_type(PermissionType.ADMIN)
     def quark(self):
         pass
-
+    
+    @filter.permission_type(PermissionType.ADMIN)
     @quark.command("help", alias=['帮助', 'helpme'])
     async def help(self, event: AstrMessageEvent):
         '''帮助信息'''
@@ -52,6 +53,7 @@ class QuarkSave(Star):
         """
         )
 
+    @filter.permission_type(PermissionType.ADMIN)
     @quark.command("run", alias=['执行', '运行'])
     async def run_task(self, event: AstrMessageEvent, id: int):
         '''执行单个任务'''
@@ -64,6 +66,7 @@ class QuarkSave(Star):
         else:
             yield event.plain_result(f'{resp["message"]}')
     
+    @filter.permission_type(PermissionType.ADMIN)
     @quark.command("runall", alias=['执行所有', '运行所有'])
     async def run_all_task(self, event: AstrMessageEvent):
         '''执行所有任务'''
@@ -71,6 +74,7 @@ class QuarkSave(Star):
         yield event.plain_result(f"执行所有任务时耗时较久，消息会在1~3分钟内返回（取决于任务数量）")
         yield event.plain_result(resp["message"])
 
+    @filter.permission_type(PermissionType.ADMIN)
     @quark.command("list", alias=['列表', '任务列表'])
     async def get_list(self, event: AstrMessageEvent):
         '''获取任务列表'''
@@ -87,18 +91,21 @@ class QuarkSave(Star):
                     tasklist += f"\n"
             yield event.plain_result(f"{tasklist}")
 
+    @filter.permission_type(PermissionType.ADMIN)
     @quark.command("del", alias=['删除', '删除任务', 'del'])
     async def del_task(self, event: AstrMessageEvent, id: int):
         '''删除任务'''
         resp = await self.quark_save.del_task(id)
         yield event.plain_result(f"任务{id} {resp['message']}")
 
+    @filter.permission_type(PermissionType.ADMIN)
     @quark.command("rename", alias=['重命名', '修改任务'])
     async def rename(self, event: AstrMessageEvent, id: int, name: str):
         '''重命名任务'''
         resp = await self.quark_save.rename_task(id, name, dir=None, link=None, subdir=None)
         yield event.plain_result(f"任务{id} {resp['message']}")
     
+    @filter.permission_type(PermissionType.ADMIN)
     @quark.command("update_link", alias=['修改链接', '更新链接'])
     async def update_link(self, event: AstrMessageEvent, id: int, link: str):
         '''更新任务链接'''
@@ -117,6 +124,7 @@ class QuarkSave(Star):
             resp = await self.quark_save.rename_task(id, link=share_link, dir=None, subdir=None, name=None)
             yield event.plain_result(f"任务{id} {resp['message']}")
 
+    @filter.permission_type(PermissionType.ADMIN)
     @quark.command("update_dir", alias=['修改目录', '更新目录'])
     async def update_dir(self, event: AstrMessageEvent, id: int, dir: str):
         '''更新任务目录'''
@@ -129,6 +137,7 @@ class QuarkSave(Star):
         resp = await self.quark_save.rename_task(id, dir=dir, subdir=None, link=None, name=None)
         yield event.plain_result(f"任务{id} {resp['message']}")
     
+    @filter.permission_type(PermissionType.ADMIN)
     @quark.command("update_subdir", alias=['修改子目录', '更新子目录'])
     async def update_subdir(self, event: AstrMessageEvent, id: int, subdir: str):
         '''更新任务子目录正则表达式'''
@@ -138,6 +147,7 @@ class QuarkSave(Star):
         resp = await self.quark_save.rename_task(id, subdir=subdir, dir=None, link=None, name=None)
         yield event.plain_result(f"任务{id} {resp['message']}")
 
+    @filter.permission_type(PermissionType.ADMIN)
     @quark.command("detail", alias=['详情', '任务详情'])
     async def get_detail(self, event: AstrMessageEvent, id: int):
         '''获取任务详情'''

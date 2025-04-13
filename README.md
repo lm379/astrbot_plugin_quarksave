@@ -14,6 +14,8 @@
 
 若无法访问github，可前往gitee下载源码后手动安装
 
+**注意，本插件只允许在私聊中使用，且仅允许管理员调用，请在使用前给机器人发送 `/sid` 获取用户id后，在astrbot后台添加，否则无法使用**
+
 ```bash
 cd AstrBot/data/plugins
 git clone https://gitee.com/lm379/astrbot_plugin_quarksave.git
