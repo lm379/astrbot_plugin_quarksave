@@ -164,6 +164,8 @@ class QuarkSaveApi:
             "shareurl": share_link,
             "savepath": save_path,
             "taskname": title,
+            "pattern": "(.*)\\.(mp4|mkv)",
+            "replace": "",
         }
         if self.task_exists(share_link):
             return {"success": False, "message": "分享链接已存在"}
