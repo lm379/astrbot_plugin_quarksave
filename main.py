@@ -182,13 +182,15 @@ class QuarkSave(Star):
     # 监听所有消息，且只允许单聊
     @filter.permission_type(PermissionType.ADMIN)
     @filter.event_message_type(filter.EventMessageType.PRIVATE_MESSAGE)
-    @filter.regex(
-        r"^(?!.*\/quark).*?(https:\/\/pan\.quark\.cn\/s\/[a-f0-9]{12})(?:.*?(?:pwd|提取码|密码)\s*[=：:]?\s*([a-zA-Z0-9]{4}))?",
-        flags=re.DOTALL,
-    )
+    @filter.regex(Quark_ShareLink_Pattern)
     async def quark_share_link(self, event: AstrMessageEvent):
         """自动识别聊天记录中的分享链接"""
         message_str = event.message_str or ""
+
+        if "/quark" in message_str:
+            # 如果消息中包含/quark指令，则不处理
+            return
+
         # 通过正则表达式匹配分享链接
         match = re.search(Quark_ShareLink_Pattern, message_str)
         if match:
