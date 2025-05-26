@@ -1,6 +1,6 @@
 name: astrbot_plugin_quarksave # 这是你的插件的唯一识别名。
 desc: 调用quark-auto-save转存资源到自己的夸克网盘。 # 插件简短描述
 help: 输入 /quark help 查看关键词回复帮助。 # 插件的帮助信息
-version: v1.0.3 # 插件版本号。格式：v1.1.1 或者 v1.1
+version: v1.0.4 # 插件版本号。格式：v1.1.1 或者 v1.1
 author: lm379 # 作者
 repo: https://github.com/lm379/astrbot_plugin_quarksave # 插件的仓库地址
