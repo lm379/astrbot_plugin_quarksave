@@ -8,7 +8,7 @@
     "quark_auto_save_url": {
         "description": "Quark-Auto-Save的URL地址",
         "hint": "‼️若Quark-Auto-Save和AstrBot部署在同一台机器上，且均为docker部署，请修改为Quark-Auto-Save的容器IP地址‼️",
-        "default": "http://172.17.0.1:5005/",
+        "default": "http://quark-auto-save:5005/",
         "type": "string"
     },
     "quark_save_path": {

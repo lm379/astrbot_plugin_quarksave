@@ -144,7 +144,7 @@ class QuarkSaveApi:
     async def get_share_detail(self, quark_share_link, pwd):
         """获取分享链接详情"""
         url = self.build_share_url(quark_share_link, pwd)
-        return await self.http.request('GET', 'get_share_detail', params={'shareurl': url})
+        return await self.http.request('POST', 'get_share_detail', json={'shareurl': url})
         
     # 检查链接是否已经存在
     def task_exists(self, share_link: str) -> bool:

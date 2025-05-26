@@ -110,6 +110,12 @@ git clone https://gitee.com/lm379/astrbot_plugin_quarksave.git
 
 ## 更新记录
 
+### v1.0.4
+适配上游API更改
+
+### v1.0.3
+修复部分bug
+
 ### v1.0.2
 
 适配API Token授权模式 (需上游项目 **v0.5.0** 版本及以上)  
