@@ -1,9 +1,11 @@
 import re
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
-from astrbot.api.star import Context, Star, register
+
 from astrbot.api import logger
-from .quark_save_api import QuarkSaveApi
+from astrbot.api.event import AstrMessageEvent, filter
+from astrbot.api.star import Context, Star, register
 from astrbot.core.star.filter.permission import PermissionType
+
+from .quark_save_api import QuarkSaveApi
 
 # 用于匹配夸克网盘分享链接的正则表达式
 Quark_ShareLink_Pattern = r"(https:\/\/pan\.quark\.cn\/s\/[a-f0-9]{12})(?:.*?(?:pwd|提取码|密码)\s*[=：:]?\s*([a-zA-Z0-9]{4}))?"
@@ -13,7 +15,7 @@ Quark_ShareLink_Pattern = r"(https:\/\/pan\.quark\.cn\/s\/[a-f0-9]{12})(?:.*?(?:
     "astrbot_plugin_quarksave",
     "lm379",
     "调用quark-auto-save转存资源到自己的夸克网盘",
-    "1.0.4",
+    "1.0.5",
 )
 class QuarkSave(Star):
     def __init__(self, context: Context, config: dict):
@@ -61,16 +63,16 @@ class QuarkSave(Star):
 
     @filter.permission_type(PermissionType.ADMIN)
     @quark.command("run", alias=["执行", "运行"])
-    async def run_task(self, event: AstrMessageEvent, id: int):
-        """执行单个任务"""
+    async def run_task(self, event: AstrMessageEvent, id: int | None = None):
+        """执行单个或所有任务"""
         if id is None:
-            yield event.plain_result("请输入任务ID")
-            return
-        resp = await self.quark_save.run_task(id)
-        if resp["success"] == False:
-            yield event.plain_result(resp["message"])
+            # 若没有传递id则运行所有任务
+            resp = await self.quark_save.run_task(None)
+            yield event.plain_result("执行所有任务时耗时较久，消息会在1~3分钟内返回（取决于任务数量）")
         else:
-            yield event.plain_result(f'{resp["message"]}')
+            # 传递id则运行单个任务
+            resp = await self.quark_save.run_task(id)
+        yield event.plain_result(f"{resp.message}")
 
     @filter.permission_type(PermissionType.ADMIN)
     @quark.command("runall", alias=["执行所有", "运行所有"])
@@ -78,25 +80,25 @@ class QuarkSave(Star):
         """执行所有任务"""
         resp = await self.quark_save.run_task(None)
         yield event.plain_result(
-            f"执行所有任务时耗时较久，消息会在1~3分钟内返回（取决于任务数量）"
+            "执行所有任务时耗时较久，消息会在1~3分钟内返回（取决于任务数量）"
         )
-        yield event.plain_result(resp["message"])
+        yield event.plain_result(resp.message)
 
     @filter.permission_type(PermissionType.ADMIN)
     @quark.command("list", alias=["列表", "任务列表"])
     async def get_list(self, event: AstrMessageEvent):
         """获取任务列表"""
         resp = await self.quark_save.get_task_list()
-        if resp["success"] == False:
-            yield event.plain_result(f"{resp['message']}")
+        if not resp or not resp.data:
+            yield event.plain_result(resp.message if resp else "获取任务列表失败")
         else:
             tasklist = ""
-            for index, task in enumerate(resp["data"]):
+            for index, task in enumerate(resp.data):
                 tasklist += f"ID: {index}  任务名: {task['taskname']}"
                 if task.get("shareurl_ban"):
                     tasklist += f"  当前状态：{task['shareurl_ban']}"
-                if index < len(resp["data"]) - 1:
-                    tasklist += f"\n"
+                if index < len(resp.data) - 1:
+                    tasklist += "\n"
             yield event.plain_result(f"{tasklist}")
 
     @filter.permission_type(PermissionType.ADMIN)
@@ -104,7 +106,7 @@ class QuarkSave(Star):
     async def del_task(self, event: AstrMessageEvent, id: int):
         """删除任务"""
         resp = await self.quark_save.del_task(id)
-        yield event.plain_result(f"任务{id} {resp['message']}")
+        yield event.plain_result(f"任务{id} {resp.message}")
 
     @filter.permission_type(PermissionType.ADMIN)
     @quark.command("rename", alias=["重命名", "修改任务"])
@@ -113,7 +115,7 @@ class QuarkSave(Star):
         resp = await self.quark_save.rename_task(
             id, name, dir=None, link=None, subdir=None
         )
-        yield event.plain_result(f"任务{id} {resp['message']}")
+        yield event.plain_result(f"任务{id} {resp.message}")
 
     @filter.permission_type(PermissionType.ADMIN)
     @quark.command("update_link", alias=["修改链接", "更新链接"])
@@ -134,7 +136,7 @@ class QuarkSave(Star):
             resp = await self.quark_save.rename_task(
                 id, link=share_link, dir=None, subdir=None, name=None
             )
-            yield event.plain_result(f"任务{id} {resp['message']}")
+            yield event.plain_result(f"任务{id} {resp.message}")
 
     @filter.permission_type(PermissionType.ADMIN)
     @quark.command("update_dir", alias=["修改目录", "更新目录"])
@@ -149,7 +151,7 @@ class QuarkSave(Star):
         resp = await self.quark_save.rename_task(
             id, dir=dir, subdir=None, link=None, name=None
         )
-        yield event.plain_result(f"任务{id} {resp['message']}")
+        yield event.plain_result(f"任务{id} {resp.message}")
 
     @filter.permission_type(PermissionType.ADMIN)
     @quark.command("update_subdir", alias=["修改子目录", "更新子目录"])
@@ -161,17 +163,20 @@ class QuarkSave(Star):
         resp = await self.quark_save.rename_task(
             id, subdir=subdir, dir=None, link=None, name=None
         )
-        yield event.plain_result(f"任务{id} {resp['message']}")
+        yield event.plain_result(f"任务{id} {resp.message}")
 
     @filter.permission_type(PermissionType.ADMIN)
     @quark.command("detail", alias=["详情", "任务详情"])
     async def get_detail(self, event: AstrMessageEvent, id: int):
         """获取任务详情"""
         resp = await self.quark_save.get_task_detail(id)
-        if resp["success"] == False:
-            yield event.plain_result(f"{resp['message']}")
+        if not resp:
+            yield event.plain_result(resp.message)
         else:
-            task = resp["data"]
+            task = resp.data
+            if not task:
+                yield event.plain_result("任务不存在")
+                return
             task_detail = f"ID: {id}\n任务名: {task['taskname']}\n链接: {task['shareurl']}\n保存目录: {task['savepath']}\n匹配表达式: {task['pattern']}\n替换表达式: {task['replace']}"
             if task.get("shareurl_ban"):
                 task_detail += f"\n当前状态: {task['shareurl_ban']}"
@@ -206,7 +211,7 @@ class QuarkSave(Star):
                 share_detail = await self.quark_save.get_share_detail(
                     share_link, share_pwd
                 )
-                if share_detail["success"] == False:
+                if not share_detail["success"]:
                     yield event.plain_result(share_detail["message"])
                 else:
                     # 去除标题中的.和空格
@@ -218,4 +223,7 @@ class QuarkSave(Star):
                     resp = await self.quark_save.add_share_task(
                         share_link, share_pwd, title
                     )
-                    yield event.plain_result(f'任务 {title} {resp["message"]}')
+                    if resp:
+                        yield event.plain_result(f"任务 {title} {resp.message}")
+                    else:
+                        yield event.plain_result(f"任务 {title} 添加失败")

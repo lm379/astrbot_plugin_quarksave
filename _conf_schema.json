@@ -1,13 +1,7 @@
 {
-    "quark_auto_save_cookie": {
-        "description": "Cookie",
-        "type": "string",
-        "hint": "已废弃，会在后续版本中删除，请使用API密钥",
-        "obvious_hint": false
-    },
     "quark_auto_save_url": {
         "description": "Quark-Auto-Save的URL地址",
-        "hint": "‼️若Quark-Auto-Save和AstrBot部署在同一台机器上，且均为docker部署，请修改为Quark-Auto-Save的容器IP地址‼️",
+        "hint": "‼️若QAS和AstrBot部署在同一台机器上，且均为docker部署，建议将QAS和AstrBot部署在同一docker网络中，此处则可直接使用容器名‼️",
         "default": "http://quark-auto-save:5005/",
         "type": "string"
     },
@@ -23,5 +17,17 @@
         "default": "",
         "hint": "请在Quark-Auto-Save的后台中获取",
         "obvious_hint": true
+    },
+    "quark_auto_save_pattern": {
+        "description": "默认保存规则匹配表达式",
+        "type": "string",
+        "default": "(.*)\\.(mp4|mkv)",
+        "hint": "用于匹配需要保存的文件类型，默认为匹配所有mp4和mkv文件"
+    },
+    "quark_auto_save_replace": {
+        "description": "默认替换表达式",
+        "type": "string",
+        "default": "",
+        "hint": "支持正则表达式替换，默认为不替换"
     }
 }
